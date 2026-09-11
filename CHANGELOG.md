@@ -17,7 +17,13 @@ Los cambios se agrupan en las siguientes categorías:
 - **Corregido** — corrección de errores.
 - **Seguridad** — correcciones de vulnerabilidades.
 
-## [1.0.0] - 2026-09-11
+## [1.1.0] - 2026-09-11
+
+### Añadido
+- Añadido el canal `hotkey` en `ChannelPolicyManager` (`app/services/channel_policy_manager.py`) con política de riesgo por defecto `RiskLevel.MEDIUM`, alineada con la configuración de `novactl` / `cli`.
+- Actualizadas las pruebas unitarias en `tests/test_channel_policy_manager.py` para verificar la inicialización y presencia del canal `hotkey`.
+
+## [1.0.0] - 2026-08-30
 
 ### Añadido
 - Implementación inicial del microservicio **Security Service** (`security-service`) para la autorización **User → Service** (MVP) en el ecosistema Nova.
