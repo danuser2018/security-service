@@ -4,10 +4,11 @@ from app.models.security import ChannelPolicy, RiskLevel
 class ChannelPolicyManager:
     def __init__(self):
         # Default policies according to spec:
-        # voice -> high, cli -> medium, api -> low
+        # voice -> high, cli -> medium, hotkey -> medium, api -> low
         self._channels: Dict[str, ChannelPolicy] = {
             "voice": ChannelPolicy(max_risk=RiskLevel.HIGH),
             "cli": ChannelPolicy(max_risk=RiskLevel.MEDIUM),
+            "hotkey": ChannelPolicy(max_risk=RiskLevel.MEDIUM),
             "api": ChannelPolicy(max_risk=RiskLevel.LOW),
         }
 

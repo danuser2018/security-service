@@ -107,7 +107,8 @@ Configuración inicial por defecto en memoria:
 | Canal | Riesgo máximo admitido (`max_risk`) | Justificación |
 |---|---|---|
 | `voice` | `high` | Canal principal interactivo local por voz. |
-| `cli` | `medium` | Línea de comandos / scripts de automatización. |
+| `cli` | `medium` | Línea de comandos / scripts de automatización (novactl). |
+| `hotkey` | `medium` | Atajos de teclado del sistema (misma política que novactl / cli). |
 | `api` | `low` | Acceso programático remoto o no supervisado. |
 
 ---
@@ -222,6 +223,7 @@ Configuración inicial por defecto en memoria:
   "channels": {
     "voice": {"max_risk": "high"},
     "cli": {"max_risk": "medium"},
+    "hotkey": {"max_risk": "medium"},
     "api": {"max_risk": "low"}
   }
 }
