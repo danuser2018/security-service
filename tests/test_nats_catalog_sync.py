@@ -19,6 +19,9 @@ from app.services.action_registry import ActionRegistry
 from app.services.authorization_engine import AuthorizationEngine
 
 
+from app.main import sync_host_commands
+
+
 @pytest.fixture(autouse=True)
 def clean_table_registry():
     routes.lookup_table_registry.clear()
@@ -37,12 +40,30 @@ async def test_nats_catalog_sync_updates_lookup_table():
         ],
     )
 
-    entries = [{"name": c.name, "risk": c.risk} for c in evt.commands]
-    routes.lookup_table_registry.register_table("host_commands", entries)
+    count = sync_host_commands(evt.commands)
+    assert count == 3
 
     assert routes.lookup_table_registry.get_entry_risk("host_commands", "calculator") == RiskLevel.LOW
     assert routes.lookup_table_registry.get_entry_risk("host_commands", "backup") == RiskLevel.MEDIUM
     assert routes.lookup_table_registry.get_entry_risk("host_commands", "format-disk") == RiskLevel.HIGH
+    assert routes.lookup_table_registry.get_entry_risk("host_commands", "unknown-cmd") is None
+
+
+@pytest.mark.asyncio
+async def test_nats_catalog_sync_updates_lookup_table_from_dicts():
+    # When deserialized over NATS, commands are received as raw dicts
+    dict_commands = [
+        {"name": "calculator", "risk": "low", "phrases": ["calculadora"]},
+        {"name": "backup", "risk": "medium", "phrases": ["copia de seguridad"]},
+        {"name": "editor", "risk": "low", "phrases": ["editor"]},
+    ]
+
+    count = sync_host_commands(dict_commands)
+    assert count == 3
+
+    assert routes.lookup_table_registry.get_entry_risk("host_commands", "calculator") == RiskLevel.LOW
+    assert routes.lookup_table_registry.get_entry_risk("host_commands", "backup") == RiskLevel.MEDIUM
+    assert routes.lookup_table_registry.get_entry_risk("host_commands", "editor") == RiskLevel.LOW
     assert routes.lookup_table_registry.get_entry_risk("host_commands", "unknown-cmd") is None
 
 

@@ -30,6 +30,10 @@ Los cambios se agrupan en las siguientes categorías:
 - Desacoplado el registro de comandos de host de llamadas HTTP síncronas hacia `POST /v1/security/tables/{table_name}`, reservando dicho endpoint para pruebas y tablas secundarias.
 - Incrementada versión a `1.2.0` en `app/main.py`.
 
+### Corregido
+- Extracción robusta de atributos en `handle_commands_available` (`app/main.py`) para soportar entradas como diccionarios deserializados vía NATS (`dict`) además de objetos con atributos, evitando `AttributeError: 'dict' object has no attribute 'name'`.
+- Extracción de la lógica de sincronización a la función auxiliar `sync_host_commands(commands)` y adición de pruebas unitarias cubriendo deserialización de diccionarios en `tests/test_nats_catalog_sync.py`.
+
 ---
 
 ## [1.1.0] - 2026-09-11
