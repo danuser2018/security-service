@@ -12,6 +12,17 @@ from app.services.authorization_engine import AuthorizationEngine
 logger = logging.getLogger(__name__)
 
 
+def sync_host_commands(commands: list) -> int:
+    entries = [
+        {
+            "name": c["name"] if isinstance(c, dict) else getattr(c, "name", None),
+            "risk": c["risk"] if isinstance(c, dict) else getattr(c, "risk", None),
+        }
+        for c in (commands or [])
+    ]
+    return routes.lookup_table_registry.register_table("host_commands", entries)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     event_bus = NatsEventBus(config=EventBusConfig(nats_url=settings.NATS_URL))
@@ -20,9 +31,10 @@ async def lifespan(app: FastAPI):
         logger.info(f"Connected to NATS event bus at {settings.NATS_URL}")
 
         async def handle_commands_available(evt: HostCommandsAvailableEvent):
-            logger.info(f"Received {len(evt.commands)} commands from host-service via NATS")
-            entries = [{"name": c.name, "risk": c.risk} for c in evt.commands]
-            routes.lookup_table_registry.register_table("host_commands", entries)
+            commands = getattr(evt, "commands", []) or []
+            logger.info(f"Received {len(commands)} commands from host-service via NATS")
+            count = sync_host_commands(commands)
+            logger.info(f"Registered {count} entries in lookup table 'host_commands'")
 
         await event_bus.subscribe(HostCommandsAvailableEvent, handle_commands_available)
         logger.info("Subscribed to HostCommandsAvailableEvent on event.host.commands.available")
@@ -40,7 +52,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Error disconnecting from NATS: {exc}")
 
 
-app = FastAPI(title=settings.SERVICE_NAME, version="1.2.0", lifespan=lifespan)
+app = FastAPI(title=settings.SERVICE_NAME, version="1.2.1", lifespan=lifespan)
 
 # Initialize Authorization Engine
 risk_evaluator = RiskEvaluator(routes.lookup_table_registry)
