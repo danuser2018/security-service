@@ -23,7 +23,7 @@ El servicio opera bajo una estricta filosofía binaria (**ALLOW** o **DENY**) y 
 
 ### Lo que HACE:
 - Mantener en memoria el registro de acciones publicadas por los plugins de `orchestrator` (`POST /v1/security/actions/register`).
-- Mantener en memoria el catálogo de comandos del sistema y sus niveles de riesgo publicados por `host-service` (`POST /v1/security/tables/{table_name}`).
+- Mantener en memoria el catálogo de comandos del sistema y sus niveles de riesgo sincronizados reactivamente vía NATS (`event.host.commands.available`), manteniendo el endpoint REST (`POST /v1/security/tables/{table_name}`) para pruebas y administración.
 - Gestionar los umbrales de riesgo aceptables por canal (`GET` y `PUT /v1/security/channels`).
 - Evaluar de forma determinista solicitudes de autorización de planes de ejecución (`POST /v1/security/authorize`).
 - Generar y verificar tokens de autorización firmados criptográficamente mediante HMAC-SHA256 (JWT/HS256).
@@ -48,6 +48,7 @@ security-service/
 │   ├── config.py                     # Configuración y variables de entorno (BaseSettings)
 │   ├── main.py                       # Punto de entrada FastAPI y ensamblado de dependencias
 │   ├── models/
+│   │   ├── events.py                 # Modelos de eventos NATS (HostCommandsAvailableEvent)
 │   │   └── security.py               # Modelos Pydantic (RiskLevel, RiskPolicy, Requests/Responses)
 │   └── services/
 │       ├── action_registry.py        # Registro en memoria de acciones de plugins
@@ -145,9 +146,7 @@ Configuración inicial por defecto en memoria:
 
 ### 2. Registrar catálogo en tabla de búsqueda
 - **Ruta:** `POST /v1/security/tables/{table_name}`
-- **Ejemplo:** `POST /v1/security/tables/host_commands`
-- **Descripción:** Invocado por `host-service` al arrancar para publicar los comandos del sistema y su nivel de riesgo.
-- **Request Body:**
+- **Descripción:** Endpoint REST para registrar tablas de búsqueda dinámicas en memoria. Utilizado principalmente en tests unitarios y operaciones administrativas. En producción, la tabla `"host_commands"` se sincroniza de forma reactiva y periódica mediante el evento NATS `event.host.commands.available` emitido por `host-service`.
 ```json
 {
   "commands": [
@@ -300,6 +299,14 @@ El servicio se configura mediante variables de entorno (o archivo `.env`):
 | `LOG_LEVEL` | `INFO` | Nivel de logging (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `SECURITY_HMAC_SECRET` | `dev-secret-key-change-in-prod` | Clave secreta para firmar/verificar tokens HMAC |
 | `TOKEN_TTL_SECONDS` | `300` | Tiempo de expiración de los tokens emitidos (5 minutos) |
+| `NATS_URL` | `nats://nats:4222` | URL del broker NATS (variable de infraestructura configurada en `docker-compose.yml`) |
+
+### Sincronización Asíncrona de Tablas de Búsqueda vía NATS
+
+El servicio se suscribe en su ciclo de vida `lifespan` al evento tipado `HostCommandsAvailableEvent` en el subject `event.host.commands.available` emitido por `host-service`. Cada recepción actualiza atómicamente la tabla interna `"host_commands"` en `LookupTableRegistry`.
+
+> **Rol Residual del Endpoint REST `POST /v1/security/tables/{table_name}`:**
+> En producción, la tabla `"host_commands"` se gestiona exclusivamente de forma reactiva vía NATS. El endpoint REST se preserva para pruebas unitarias automatizadas (permitiendo poblar `LookupTableRegistry` sin un broker NATS activo) y para registro de tablas dinámicas secundarias de otros componentes.
 
 ---
 

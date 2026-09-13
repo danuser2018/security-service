@@ -1,5 +1,6 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     SERVICE_NAME: str = "security-service"
@@ -8,8 +9,12 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     SECURITY_HMAC_SECRET: str = os.getenv("SECURITY_HMAC_SECRET", "dev-secret-key-change-in-prod")
     TOKEN_TTL_SECONDS: int = 300
+    NATS_URL: str = "nats://nats:4222"
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
+
 
 settings = Settings()
