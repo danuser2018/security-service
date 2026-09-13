@@ -1,11 +1,46 @@
+import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from nova_event_bus import NatsEventBus, EventBusConfig
 from app.config import settings
 from app.api import routes
+from app.models.events import HostCommandsAvailableEvent
 from app.services.risk_evaluator import RiskEvaluator
 from app.services.token_manager import AuthorizationTokenManager
 from app.services.authorization_engine import AuthorizationEngine
 
-app = FastAPI(title=settings.SERVICE_NAME)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    event_bus = NatsEventBus(config=EventBusConfig(nats_url=settings.NATS_URL))
+    try:
+        await event_bus.connect()
+        logger.info(f"Connected to NATS event bus at {settings.NATS_URL}")
+
+        async def handle_commands_available(evt: HostCommandsAvailableEvent):
+            logger.info(f"Received {len(evt.commands)} commands from host-service via NATS")
+            entries = [{"name": c.name, "risk": c.risk} for c in evt.commands]
+            routes.lookup_table_registry.register_table("host_commands", entries)
+
+        await event_bus.subscribe(HostCommandsAvailableEvent, handle_commands_available)
+        logger.info("Subscribed to HostCommandsAvailableEvent on event.host.commands.available")
+    except Exception as exc:
+        logger.warning(f"Failed to connect or subscribe to NATS on startup: {exc}")
+
+    app.state.event_bus = event_bus
+
+    yield
+
+    try:
+        await event_bus.disconnect()
+        logger.info("Disconnected from NATS event bus")
+    except Exception as exc:
+        logger.warning(f"Error disconnecting from NATS: {exc}")
+
+
+app = FastAPI(title=settings.SERVICE_NAME, version="1.2.0", lifespan=lifespan)
 
 # Initialize Authorization Engine
 risk_evaluator = RiskEvaluator(routes.lookup_table_registry)

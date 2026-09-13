@@ -17,6 +17,21 @@ Los cambios se agrupan en las siguientes categorías:
 - **Corregido** — corrección de errores.
 - **Seguridad** — correcciones de vulnerabilidades.
 
+## [1.2.0] - 2026-09-12
+
+### Añadido
+- Integración con el bus de eventos NATS (`nova-event-bus @ 1.1.0`) para sincronización reactiva y asíncrona del catálogo de comandos.
+- Variable de entorno `NATS_URL` en `app/config.py`.
+- Modelo de evento `HostCommandsAvailableEvent` en `app/models/events.py`.
+- Suscripción en el ciclo de vida `lifespan` de FastAPI a `event.host.commands.available` actualizando atómicamente la tabla interna `"host_commands"` en `LookupTableRegistry`.
+- Nueva suite de pruebas unitarias `tests/test_nats_catalog_sync.py` validando la actualización reactiva y comportamiento Fail-Closed.
+
+### Cambiado
+- Desacoplado el registro de comandos de host de llamadas HTTP síncronas hacia `POST /v1/security/tables/{table_name}`, reservando dicho endpoint para pruebas y tablas secundarias.
+- Incrementada versión a `1.2.0` en `app/main.py`.
+
+---
+
 ## [1.1.0] - 2026-09-11
 
 ### Añadido
